@@ -3,7 +3,7 @@ import sys
 import json
 import codecs
 from urllib import parse, request
-from config import API_KEY, REQUIRED_FIELDS
+from config import API_KEY
 
 
 def parse_args(args: list) -> argparse.Namespace:
@@ -28,7 +28,7 @@ def get_movie_details(title: str, required_fields: list):
             except LookupError:
                 reader = codecs.getreader("utf-8")
             data = json.load(reader(response))
-            return {key: data.get(key) for key in REQUIRED_FIELDS}
+            return {key: data.get(key) for key in required_fields}
 
 
 if __name__ == "__main__":
