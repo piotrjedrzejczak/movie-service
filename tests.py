@@ -41,7 +41,7 @@ class MovieServiceUnitTests(unittest.TestCase, MovieServiceBaseTest):
             'BoxOffice': '$171,479,930'
         }
         rv = get_movie_details(title, REQUIRED_FIELDS)
-        self.assertEqual(expected_output, rv)
+        self.assertDictEqual(expected_output, rv)
 
 
 if __name__ == "__main__":
