@@ -26,6 +26,17 @@ class MovieServiceFunctionalTests(MovieServiceBaseTest):
         records = self.cursor.fetchall()
         self.assertEqual([title[0] for title in records], args)
 
+    def test_adding_duplicate_movies_to_database(self):
+        args = ["The Matrix"]
+        main(args, self.test_db_uri)
+        self.cursor.execute("SELECT title FROM movies")
+        records = self.cursor.fetchall()
+        self.assertEqual([title[0] for title in records], args)
+        main(args, self.test_db_uri)
+        self.cursor.execute("SELECT title FROM movies")
+        records = self.cursor.fetchall()
+        self.assertEqual([title[0] for title in records], args)
+
 
 class MovieServiceUnitTests(MovieServiceBaseTest):
 
