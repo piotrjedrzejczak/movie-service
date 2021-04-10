@@ -1,47 +1,56 @@
-import unittest
-import subprocess
 import os
-from config import STORAGE_FILEPATH, REQUIRED_FIELDS
-from ms import parse_args, get_movie_details
+import unittest
+from sqlite3 import connect
+from ms import parse_args, get_movie_details_by_title, main
+from config import REQUIRED_FIELDS, TEST_DATABASE_URI
 
 
-class MovieServiceBaseTest:
+class MovieServiceBaseTest(unittest.TestCase):
 
-    def run_script(self, args):
-        return subprocess.run(
-            'python ms.py ' + ' '.join(args),
-            capture_output=True
-        )
+    def setUp(self) -> None:
+        self.test_db_uri = TEST_DATABASE_URI
+        self.connection = connect(self.test_db_uri)
+        self.cursor = self.connection.cursor()
 
-
-class MovieServiceFunctionalTests(unittest.TestCase, MovieServiceBaseTest):
-
-    def test_download_movie_data_and_save_to_json_file(self):
-        args = ["the matrix", "lord of the rings"]
-        self.assertEqual(self.run_script(args).returncode, 0)
-        # self.assertTrue(os.path.isfile(STORAGE_FILEPATH))
+    def tearDown(self) -> None:
+        self.connection.close()
+        os.remove(TEST_DATABASE_URI)
 
 
-class MovieServiceUnitTests(unittest.TestCase, MovieServiceBaseTest):
+class MovieServiceFunctionalTests(MovieServiceBaseTest):
+
+    def test_download_movie_data_and_save_to_db(self):
+        args = ["The Matrix", "The Lord of the Rings: The Fellowship of the Ring"]
+        main(args, self.test_db_uri)
+        self.cursor.execute("SELECT title FROM movies")
+        records = self.cursor.fetchall()
+        self.assertEqual([title[0] for title in records], args)
+
+
+class MovieServiceUnitTests(MovieServiceBaseTest):
 
     def test_argument_parser(self):
         args = ["the matrix", "lord of the rings"]
         self.assertEqual(args, parse_args(args).list)
 
-    def test_get_movie_details(self):
+    def test_get_movie_details_by_title(self):
         """This test might be prone to failures due to data changes
         on the website. In case it fails make sure that the
         expected_output is up to date."""
 
         title = "the matrix"
-        expected_output = {
-            'imdbID': 'tt0133093',
-            'Title': 'The Matrix',
-            'imdbRating': '8.7',
-            'BoxOffice': '$171,479,930'
-        }
-        rv = get_movie_details(title, REQUIRED_FIELDS)
-        self.assertDictEqual(expected_output, rv)
+        expected_output = ['tt0133093', 'The Matrix', '8.7', '$171,479,930']
+        rv = get_movie_details_by_title(title, REQUIRED_FIELDS)
+        self.assertEqual(expected_output, rv)
+
+    def test_try_to_find_non_existing_movie(self):
+        title = "asdasdasdasdasd"
+        self.assertRaises(
+            LookupError,
+            get_movie_details_by_title,
+            title,
+            REQUIRED_FIELDS
+        )
 
 
 if __name__ == "__main__":
