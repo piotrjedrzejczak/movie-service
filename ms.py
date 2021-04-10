@@ -1,6 +1,7 @@
 import sys
 import json
 import codecs
+from re import sub
 from argparse import ArgumentParser, Namespace
 from sqlite3 import connect, Connection, IntegrityError
 from typing import Optional
@@ -31,7 +32,7 @@ def get_movie_details_by_title(title: str, required_fields: list) -> dict:
             data = json.load(reader(response))
             if data.get("Error"):
                 raise LookupError("Movie Not Found!")
-            return [data.get(key) for key in required_fields]
+            return {key: data.get(key) for key in required_fields}
     except URLError as e:
         if hasattr(e, "reason"):
             print(f"Failed to reach a server. Reason: {e.reason}")
@@ -47,16 +48,31 @@ def search_movies(list_of_movies: list, db_uri: str) -> None:
             db_operation(connection, CREATE_MOVIES_TABLE)
         for title in list_of_movies:
             try:
-                result = get_movie_details_by_title(title, REQUIRED_FIELDS)
+                raw_results = get_movie_details_by_title(title, REQUIRED_FIELDS)
+                reformatted = format_movie_data(raw_results, REQUIRED_FIELDS)
             except LookupError:
                 print(f"{title} not found.")
             try:
-                db_operation(connection, INSERT_INTO_MOVIES_TABLE, movie=result)
+                db_operation(connection, INSERT_INTO_MOVIES_TABLE, movie=reformatted)
             except IntegrityError as error:
                 if "UNIQUE" in str(error.args):
-                    result.append(result.pop(0))
-                    db_operation(connection, UPDATE_MAIN_TABLE_RECORD, movie=result)
+                    reformatted.append(reformatted.pop(0))
+                    db_operation(
+                        connection, UPDATE_MAIN_TABLE_RECORD, movie=reformatted
+                    )
     connection.close()
+
+
+def format_movie_data(data: dict, required_fields: list) -> list:
+    for key, value in data.items():
+        if value == "N/A":
+            data[key] = None
+            continue
+        if key == "imdbRating":
+            data[key] = float(value)
+        if key == "BoxOffice":
+            data[key] = int(sub(r"[^\d]", "", value))
+    return [data.get(key) for key in required_fields]
 
 
 def db_operation(connection: Connection, sql: str, movie: Optional[list] = None):
@@ -78,6 +94,7 @@ def main(args: list, db_uri: str = None):
     parser = parse_args(args)
     if not db_uri:
         from config import DATABASE_URI
+
         db_uri = DATABASE_URI
     if parser.list:
         search_movies(parser.list, db_uri)
