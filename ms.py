@@ -3,11 +3,16 @@ import json
 import codecs
 from re import sub
 from argparse import ArgumentParser, Namespace
-from sqlite3 import connect, Connection, IntegrityError, Cursor
 from typing import Optional
 from urllib.request import Request, urlopen
 from urllib.parse import quote
 from urllib.error import URLError
+from sqlite3 import (
+    IntegrityError,
+    Connection,
+    Cursor,
+    connect
+)
 from config import (
     API_KEY,
     INSERT_INTO_MOVIES_TABLE,
@@ -15,6 +20,9 @@ from config import (
     CHECK_IF_MOVIES_TABLE_EXIST,
     CREATE_MOVIES_TABLE,
     SELECT_ALL_TITLES,
+    SELECT_AVARAGE_RATING,
+    SELECT_HIGHEST_BOXOFFICE,
+    SELECT_HIGHEST_RATED_MOVIE,
     UPDATE_MAIN_TABLE_RECORD,
 )
 
@@ -22,9 +30,6 @@ from config import (
 def search_movies(list_of_movies: list, db_uri: str) -> None:
     connection = connect(db_uri)
     with connection:
-        cursor = db_operation(connection, CHECK_IF_MOVIES_TABLE_EXIST)
-        if not cursor.fetchall():
-            db_operation(connection, CREATE_MOVIES_TABLE)
         for title in list_of_movies:
             try:
                 raw_results = get_movie_details_by_title(title, REQUIRED_FIELDS, API_KEY)
@@ -36,18 +41,16 @@ def search_movies(list_of_movies: list, db_uri: str) -> None:
             except IntegrityError as error:
                 if "UNIQUE" in str(error.args):
                     reformatted.append(reformatted.pop(0))
-                    db_operation(
-                        connection, UPDATE_MAIN_TABLE_RECORD, movie=reformatted
-                    )
+                    db_operation(connection, UPDATE_MAIN_TABLE_RECORD, movie=reformatted)
     connection.close()
 
 
-def display_movies(db_uri: str) -> None:
+def display_movies(db_uri: str, sql: str) -> None:
     connection = connect(db_uri)
     with connection:
-        cursor = db_operation(connection, SELECT_ALL_TITLES)
-        for title in cursor.fetchall():
-            print(title[0])
+        cursor = db_operation(connection, sql)
+        for record in cursor.fetchall():
+            print(' '.join([str(field) for field in record]))
     connection.close()
 
 
@@ -97,23 +100,59 @@ def db_operation(connection: Connection, sql: str, movie: Optional[list] = None)
 def parse_args(args: list) -> Namespace:
     parser = ArgumentParser(prog="movie-service")
     parser.add_argument(
-        "--display",
+        "-t",
+        "--titles",
         action="store_true",
-        help="display the list of movies from database"
+        help="display the list of all movies"
     )
-    parser.add_argument("--list", nargs="+", help="list of movie titles to download")
+    parser.add_argument(
+        "-tr",
+        "--top-rated",
+        action="store_true",
+        help="display the top rated movie/movies"
+    )
+    parser.add_argument(
+        "-tb",
+        "--top-boxoffice",
+        action="store_true",
+        help="display the highest grossing movie"
+    )
+    parser.add_argument(
+        "-a",
+        "--avarage",
+        action="store_true",
+        help="display the avarage rating of all movies"
+    )
+    parser.add_argument(
+        "-l",
+        "--list",
+        nargs="+",
+        help="list of movie titles to download"
+    )
     return parser.parse_args(args)
 
 
 def main(args: list, db_uri: str = None):
-    parser = parse_args(args)
     if not db_uri:
         from config import DATABASE_URI
         db_uri = DATABASE_URI
+    connection = connect(db_uri)
+    cursor = db_operation(connection, CHECK_IF_MOVIES_TABLE_EXIST)
+    if not cursor.fetchall():
+        db_operation(connection, CREATE_MOVIES_TABLE)
+    connection.close()
+
+    parser = parse_args(args)
     if parser.list:
         search_movies(parser.list, db_uri)
-    elif parser.display:
-        display_movies(db_uri)
+    elif parser.titles:
+        display_movies(db_uri, SELECT_ALL_TITLES)
+    elif parser.top_rated:
+        display_movies(db_uri, SELECT_HIGHEST_RATED_MOVIE)
+    elif parser.top_boxoffice:
+        display_movies(db_uri, SELECT_HIGHEST_BOXOFFICE)
+    elif parser.avarage:
+        display_movies(db_uri, SELECT_AVARAGE_RATING)
 
 
 if __name__ == "__main__":

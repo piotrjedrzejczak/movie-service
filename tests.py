@@ -37,15 +37,45 @@ class MovieServiceFunctionalTests(MovieServiceBaseTest):
         records = self.cursor.fetchall()
         self.assertEqual([title[0] for title in records], args[1:])
 
+    def test_display_list_of_titles(self):
+        movies = ["--list", "The Matrix", "Casino", "Tenet"]
+        main(movies, self.test_db_uri)
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            args = ["--titles"]
+            main(args, self.test_db_uri)
+        output = temp_stdout.getvalue().strip()
+        self.assertEqual(output, '\n'.join(movies[1:]))
+
+    def test_display_top_rated(self):
+        movies = ["--list", "The Matrix", "Casino", "Tenet"]
+        main(movies, self.test_db_uri)
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            args = ["--top-rated"]
+            main(args, self.test_db_uri)
+        output = temp_stdout.getvalue().strip()
+        self.assertEqual(output, 'The Matrix 8.7')
+
+    def test_display_highest_box_office(self):
+        movies = ["--list", "The Matrix", "Casino", "Tenet"]
+        main(movies, self.test_db_uri)
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            args = ["--top-boxoffice"]
+            main(args, self.test_db_uri)
+        output = temp_stdout.getvalue().strip()
+        self.assertEqual(output, 'The Matrix 171479930')
+
     def test_movie_list_display(self):
         movies = ["--list", "The Matrix", "Casino", "Tenet"]
         main(movies, self.test_db_uri)
         temp_stdout = StringIO()
         with contextlib.redirect_stdout(temp_stdout):
-            args = ["--display"]
+            args = ["--avarage"]
             main(args, self.test_db_uri)
         output = temp_stdout.getvalue().strip()
-        self.assertEqual(output, '\n'.join(movies[1:]))
+        self.assertEqual(output, '8.13')
 
 
 class MovieServiceUnitTests(MovieServiceBaseTest):
@@ -87,4 +117,4 @@ class MovieServiceUnitTests(MovieServiceBaseTest):
 
 
 if __name__ == "__main__":
-    unittest.main(buffer=True)  # buffer=True suppresses stdout prints
+    unittest.main()
