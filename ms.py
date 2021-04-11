@@ -27,7 +27,7 @@ def search_movies(list_of_movies: list, db_uri: str) -> None:
             db_operation(connection, CREATE_MOVIES_TABLE)
         for title in list_of_movies:
             try:
-                raw_results = get_movie_details_by_title(title, REQUIRED_FIELDS)
+                raw_results = get_movie_details_by_title(title, REQUIRED_FIELDS, API_KEY)
                 reformatted = format_movie_data(raw_results, REQUIRED_FIELDS)
             except LookupError:
                 print(f"{title} not found.")
@@ -51,9 +51,9 @@ def display_movies(db_uri: str) -> None:
     connection.close()
 
 
-def get_movie_details_by_title(title: str, required_fields: list) -> dict:
+def get_movie_details_by_title(title: str, required_fields: list, apikey: str) -> dict:
     title = quote(title)
-    uri = f"http://www.omdbapi.com/?t={title}&apikey={API_KEY}"
+    uri = f"http://www.omdbapi.com/?t={title}&apikey={apikey}"
     req = Request(uri)
     try:
         with urlopen(req) as response:

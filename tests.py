@@ -1,7 +1,7 @@
 import os
 import unittest
 from sqlite3 import connect
-from config import REQUIRED_FIELDS, TEST_DATABASE_URI
+from config import API_KEY, REQUIRED_FIELDS, TEST_DATABASE_URI
 from ms import main, parse_args, format_movie_data, get_movie_details_by_title
 
 
@@ -60,13 +60,13 @@ class MovieServiceUnitTests(MovieServiceBaseTest):
             "imdbRating": "8.7",
             "BoxOffice": "$171,479,930",
         }
-        rv = get_movie_details_by_title(title, REQUIRED_FIELDS)
+        rv = get_movie_details_by_title(title, REQUIRED_FIELDS, API_KEY)
         self.assertEqual(expected_output, rv)
 
     def test_try_to_find_non_existing_movie(self):
         title = "asdasdasdasdasd"
         self.assertRaises(
-            LookupError, get_movie_details_by_title, title, REQUIRED_FIELDS
+            LookupError, get_movie_details_by_title, title, REQUIRED_FIELDS, API_KEY
         )
 
     def test_raw_movie_data_formatting(self):
