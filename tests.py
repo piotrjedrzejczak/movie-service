@@ -1,5 +1,7 @@
 import os
 import unittest
+import contextlib
+from io import StringIO
 from sqlite3 import connect
 from config import API_KEY, REQUIRED_FIELDS, TEST_DATABASE_URI
 from ms import main, parse_args, format_movie_data, get_movie_details_by_title
@@ -36,11 +38,14 @@ class MovieServiceFunctionalTests(MovieServiceBaseTest):
         self.assertEqual([title[0] for title in records], args[1:])
 
     def test_movie_list_display(self):
-        args = ["--list", "The Matrix", "Casino", "Tenet"]
-        main(args, self.test_db_uri)
-        args = ["--display"]
-        main(args, self.test_db_uri)
-        self.assertTrue(1, 0)
+        movies = ["--list", "The Matrix", "Casino", "Tenet"]
+        main(movies, self.test_db_uri)
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            args = ["--display"]
+            main(args, self.test_db_uri)
+        output = temp_stdout.getvalue().strip()
+        self.assertEqual(output, '\n'.join(movies[1:]))
 
 
 class MovieServiceUnitTests(MovieServiceBaseTest):
