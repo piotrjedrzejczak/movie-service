@@ -4,7 +4,7 @@
 
 - Python 3.7.9+
 - Registered API Key for IMDB Database  
-    You can register for a key here: http://www.omdbapi.com/  
+    You can register for a key here: <http://www.omdbapi.com/>  
     Before using the application add your API key to  *config.py*
 
 ## Usage
