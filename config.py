@@ -1,10 +1,11 @@
 import os
 
+API_KEY = "f8501a2c"
+
 DATABASE_NAME = "movies.db"
 DATABASE_URI = os.path.join(os.getcwd(), DATABASE_NAME)
 TEST_DATABASE_URI = os.path.join(os.getcwd(), "test_db.db")
 
-API_KEY = "f8501a2c"
 
 # Order and amount of these fields has to match the database schema.
 REQUIRED_FIELDS = ["imdbID", "Title", "imdbRating", "BoxOffice"]

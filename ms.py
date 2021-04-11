@@ -34,12 +34,15 @@ def search_movies(list_of_movies: list, db_uri: str) -> None:
             try:
                 raw_results = get_movie_details_by_title(title, REQUIRED_FIELDS, API_KEY)
                 reformatted = format_movie_data(raw_results, REQUIRED_FIELDS)
-            except LookupError:
-                print(f"{title} not found.")
-            try:
                 db_operation(connection, INSERT_INTO_MOVIES_TABLE, movie=reformatted)
+                print(f"Found {title}, saving to database...")
+            except ConnectionRefusedError as e:
+                print(e)
+            except LookupError:
+                print(f"Sorry, {title} not found")
             except IntegrityError as error:
                 if "UNIQUE" in str(error.args):
+                    print(f"You already have {title} in your database, updating details...")
                     reformatted.append(reformatted.pop(0))
                     db_operation(connection, UPDATE_MAIN_TABLE_RECORD, movie=reformatted)
     connection.close()
@@ -71,9 +74,9 @@ def get_movie_details_by_title(title: str, required_fields: list, apikey: str) -
             return {key: data.get(key) for key in required_fields}
     except URLError as e:
         if hasattr(e, "reason"):
-            print(f"Failed to reach a server. Reason: {e.reason}")
+            raise ConnectionError(f"Failed to reach a server. Reason: {e.reason}")
         elif hasattr(e, "code"):
-            print(f"Server could not fulfill the request. Error code: {e.code}")
+            raise ConnectionError(f"Server could not fulfill the request. Error code: {e.code}")
 
 
 def format_movie_data(data: dict, required_fields: list) -> list:
@@ -99,31 +102,32 @@ def db_operation(connection: Connection, sql: str, movie: Optional[list] = None)
 
 def parse_args(args: list) -> Namespace:
     parser = ArgumentParser(prog="movie-service")
-    parser.add_argument(
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
         "-t",
         "--titles",
         action="store_true",
         help="display the list of all movies"
     )
-    parser.add_argument(
+    group.add_argument(
         "-tr",
         "--top-rated",
         action="store_true",
         help="display the top rated movie/movies"
     )
-    parser.add_argument(
+    group.add_argument(
         "-tb",
         "--top-boxoffice",
         action="store_true",
         help="display the highest grossing movie"
     )
-    parser.add_argument(
+    group.add_argument(
         "-a",
         "--avarage",
         action="store_true",
         help="display the avarage rating of all movies"
     )
-    parser.add_argument(
+    group.add_argument(
         "-l",
         "--list",
         nargs="+",

@@ -117,4 +117,4 @@ class MovieServiceUnitTests(MovieServiceBaseTest):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main(buffer=True)  # buffer=True silences prints to stdout.
