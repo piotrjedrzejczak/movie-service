@@ -18,28 +18,35 @@ class MovieServiceBaseTest(unittest.TestCase):
 
 class MovieServiceFunctionalTests(MovieServiceBaseTest):
     def test_download_movie_data_and_save_to_db(self):
-        args = ["The Matrix", "The Lord of the Rings: The Fellowship of the Ring"]
+        args = ["--list", "The Matrix", "The Lord of the Rings: The Fellowship of the Ring"]
         main(args, self.test_db_uri)
         self.cursor.execute("SELECT title FROM movies")
         records = self.cursor.fetchall()
-        self.assertEqual([title[0] for title in records], args)
+        self.assertEqual([title[0] for title in records], args[1:])
 
     def test_adding_duplicate_movies_to_database(self):
-        args = ["The Matrix"]
+        args = ["--list", "The Matrix"]
         main(args, self.test_db_uri)
         self.cursor.execute("SELECT title FROM movies")
         records = self.cursor.fetchall()
-        self.assertEqual([title[0] for title in records], args)
+        self.assertEqual([title[0] for title in records], args[1:])
         main(args, self.test_db_uri)
         self.cursor.execute("SELECT title FROM movies")
         records = self.cursor.fetchall()
-        self.assertEqual([title[0] for title in records], args)
+        self.assertEqual([title[0] for title in records], args[1:])
+
+    def test_movie_list_display(self):
+        args = ["--list", "The Matrix", "Casino", "Tenet"]
+        main(args, self.test_db_uri)
+        args = ["--display"]
+        main(args, self.test_db_uri)
+        self.assertTrue(1, 0)
 
 
 class MovieServiceUnitTests(MovieServiceBaseTest):
     def test_argument_parser(self):
-        args = ["the matrix", "lord of the rings"]
-        self.assertEqual(args, parse_args(args).list)
+        args = ["--list", "the matrix", "lord of the rings"]
+        self.assertEqual(args[1:], parse_args(args).list)
 
     def test_get_movie_details_by_title(self):
         """This test might be prone to failures due to data changes
@@ -75,4 +82,4 @@ class MovieServiceUnitTests(MovieServiceBaseTest):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main(buffer=True)  # buffer=True suppresses stdout prints

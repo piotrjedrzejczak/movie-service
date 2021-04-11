@@ -3,7 +3,7 @@ import json
 import codecs
 from re import sub
 from argparse import ArgumentParser, Namespace
-from sqlite3 import connect, Connection, IntegrityError
+from sqlite3 import connect, Connection, IntegrityError, Cursor
 from typing import Optional
 from urllib.request import Request, urlopen
 from urllib.parse import quote
@@ -14,30 +14,9 @@ from config import (
     REQUIRED_FIELDS,
     CHECK_IF_MOVIES_TABLE_EXIST,
     CREATE_MOVIES_TABLE,
+    SELECT_ALL_TITLES,
     UPDATE_MAIN_TABLE_RECORD,
 )
-
-
-def get_movie_details_by_title(title: str, required_fields: list) -> dict:
-    title = quote(title)
-    uri = f"http://www.omdbapi.com/?t={title}&apikey={API_KEY}"
-    req = Request(uri)
-    try:
-        with urlopen(req) as response:
-            charset = response.headers.get_param("charset")
-            try:
-                reader = codecs.getreader(charset)
-            except LookupError:
-                reader = codecs.getreader("utf-8")
-            data = json.load(reader(response))
-            if data.get("Error"):
-                raise LookupError("Movie Not Found!")
-            return {key: data.get(key) for key in required_fields}
-    except URLError as e:
-        if hasattr(e, "reason"):
-            print(f"Failed to reach a server. Reason: {e.reason}")
-        elif hasattr(e, "code"):
-            print(f"Server could not fulfill the request. Error code: {e.code}")
 
 
 def search_movies(list_of_movies: list, db_uri: str) -> None:
@@ -63,6 +42,37 @@ def search_movies(list_of_movies: list, db_uri: str) -> None:
     connection.close()
 
 
+def display_movies(db_uri: str) -> None:
+    connection = connect(db_uri)
+    with connection:
+        cursor = db_operation(connection, SELECT_ALL_TITLES)
+        for title in cursor.fetchall():
+            print(title[0])
+    connection.close()
+
+
+def get_movie_details_by_title(title: str, required_fields: list) -> dict:
+    title = quote(title)
+    uri = f"http://www.omdbapi.com/?t={title}&apikey={API_KEY}"
+    req = Request(uri)
+    try:
+        with urlopen(req) as response:
+            charset = response.headers.get_param("charset")
+            try:
+                reader = codecs.getreader(charset)
+            except LookupError:
+                reader = codecs.getreader("utf-8")
+            data = json.load(reader(response))
+            if data.get("Error"):
+                raise LookupError("Movie Not Found!")
+            return {key: data.get(key) for key in required_fields}
+    except URLError as e:
+        if hasattr(e, "reason"):
+            print(f"Failed to reach a server. Reason: {e.reason}")
+        elif hasattr(e, "code"):
+            print(f"Server could not fulfill the request. Error code: {e.code}")
+
+
 def format_movie_data(data: dict, required_fields: list) -> list:
     for key, value in data.items():
         if value == "N/A":
@@ -75,7 +85,7 @@ def format_movie_data(data: dict, required_fields: list) -> list:
     return [data.get(key) for key in required_fields]
 
 
-def db_operation(connection: Connection, sql: str, movie: Optional[list] = None):
+def db_operation(connection: Connection, sql: str, movie: Optional[list] = None) -> Cursor:
     cursor = connection.cursor()
     if movie:
         cursor.execute(sql, movie)
@@ -86,7 +96,12 @@ def db_operation(connection: Connection, sql: str, movie: Optional[list] = None)
 
 def parse_args(args: list) -> Namespace:
     parser = ArgumentParser(prog="movie-service")
-    parser.add_argument("list", nargs="+", help="list of movie titles to download")
+    parser.add_argument(
+        "--display",
+        action="store_true",
+        help="display the list of movies from database"
+    )
+    parser.add_argument("--list", nargs="+", help="list of movie titles to download")
     return parser.parse_args(args)
 
 
@@ -94,10 +109,11 @@ def main(args: list, db_uri: str = None):
     parser = parse_args(args)
     if not db_uri:
         from config import DATABASE_URI
-
         db_uri = DATABASE_URI
     if parser.list:
         search_movies(parser.list, db_uri)
+    elif parser.display:
+        display_movies(db_uri)
 
 
 if __name__ == "__main__":
